@@ -15,31 +15,58 @@ namespace XposedModuleScraper
         static void Main(string[] args)
         {
             string FirstPageSource;
-            // Get and process HTML Code of first page
-            #region first page HTML Code
-            //FirstPageSource = GetHTMLSource("http://repo.xposed.info/module-overview");
-            FirstPageSource = new System.Net.WebClient().DownloadString("http://repo.xposed.info/module-overview");
-            //Process the HTML Code
-
-            // create a easy to type variable name for convenience
-            string a = FirstPageSource;
-            int a1 = a.IndexOf("Displaying 1 - 10 of") + 20;
-            string astr = a.Substring(a1, 18);
-            string astr1 = astr.Remove(astr.IndexOf(" mod"));
-            string astr2 = astr1.Trim();
-            int modules = Convert.ToInt32(astr2);
-            
-            #endregion
             string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
-
-            int pageDeterminer = (modules / 10) + 1;
-
-
-            string[] pagesHTMLsource = new string[pageDeterminer];
-            for(int i = 1; i <= 10; i++)
+            List<string> htmlPages = new List<string>();
+            FirstPageSource = new System.Net.WebClient().DownloadString(UrlTemplate + 0);
+            htmlPages.Add(FirstPageSource);
+            int modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
+            int pages;
+            modules = Convert.ToInt32(Console.ReadLine());
+            if((modules % 10) == 0)
             {
-                pagesHTMLsource[i] = new System.Net.WebClient().DownloadString(UrlTemplate + i);
+                pages = modules / 10;
             }
+            else
+            {
+                pages = ((modules - (modules % 10)) / 10) + 1;
+            }
+
+            
+
+
+            for (int i=0; i < 100;i++)
+            {
+                htmlPages.Add(new System.Net.WebClient().DownloadString(UrlTemplate + i));
+            }
+            
+
+            string temp1, temp2, temp3, temp4;
+            List<string> appIDNames = new List<string>();
+            for(int i=0;i< 100;i++)
+            {
+
+                temp1 = htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>"));
+                temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
+                temp1 = temp1.Substring(temp1.IndexOf("</a>"));
+                appIDNames.Add(temp1);
+
+
+
+
+
+
+                if (i > (modules / 10) - 5)
+                {
+                    string fa = htmlPages.ElementAt(i);
+                    if (!(fa.Contains(@"<div class=""view-content"">""")))
+                    {
+                        htmlPages.RemoveAt(i);
+                        break;
+                    }
+                }
+            }
+
+
 
 
 
