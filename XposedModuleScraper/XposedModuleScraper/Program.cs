@@ -41,6 +41,7 @@ namespace XposedModuleScraper
             htmlPages.Add(FirstPageSource);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
 #if DEBUG
+            Console.WriteLine(modules);
             modules = 25;
 #endif
 
@@ -62,20 +63,26 @@ namespace XposedModuleScraper
 
             for(i=0; i < pages; i++)
             {
-                sb.Append(htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>")));
-                          
+                //htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>"));
+                string sss = htmlPages.ElementAt(i);
+
+                Console.WriteLine(sss.IndexOf(@"<tbody>") + 7);
+                Console.WriteLine(sss.IndexOf("</tbody>"));
+                string ert = sss.Substring(sss.IndexOf(@"<tbody>"), sss.IndexOf("</tbody>"));
+                Console.WriteLine(ert);
+
+
+                //sb.Append(htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>")));
+
             }
             List<string> links = new List<string>();
             string htmlconcated = sb.ToString();
             while(!htmlconcated.Contains("/module/"))
             {
                 temp1 = htmlconcated;
-                temp1 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
-
-
-
                 temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
-                temp1 = temp1.Substring(temp1.IndexOf("</a>"));
+                temp1 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""));
+                htmlconcated = temp1;
             }
 
 
