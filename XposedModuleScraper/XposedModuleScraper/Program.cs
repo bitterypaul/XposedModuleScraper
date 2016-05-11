@@ -23,6 +23,9 @@ namespace XposedModuleScraper
             string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
             //List<string>
             List<string> htmlPages = new List<string>();    // one for pages which list 10 modules per page.
+            List<string> htmlCombined = new List<string>();
+
+            StringBuilder sb = new StringBuilder();
             List<string> appIDNamesUnFormatted = new List<string>();   // one for 
             Dictionary<string, string> appIdNames = new Dictionary<string, string>();
             //integers
@@ -37,6 +40,10 @@ namespace XposedModuleScraper
             FirstPageSource = webClient.DownloadString(UrlTemplate + 0);
             htmlPages.Add(FirstPageSource);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
+#if DEBUG
+            modules = 25;
+#endif
+
             if ((modules % 10) == 0)
                 pages = modules / 10;
             else
@@ -44,7 +51,8 @@ namespace XposedModuleScraper
             #endregion
             #region retrieve all pages
             // retrieve all pages each of which displays 10 modules including the last page which can display 1,2,or even 10 modules
-            for (i=1; i <= pages;i++)
+            //i < pages is used because the first page is already downloaded and the total number of pages to be fetched is one less than total number of pages
+            for (i=1; i < pages;i++)
             {
                 htmlPages.Add(webClient.DownloadString(UrlTemplate + i));
                 Thread.Sleep(delayBetweenRequests);
@@ -52,20 +60,23 @@ namespace XposedModuleScraper
             #endregion
 
 
-
-            for (i=0;i< 100;i++)
+            for(i=0; i < pages; i++)
             {
-               
+                sb.Append(htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>")));
+                          
+            }
+            List<string> links = new List<string>();
+            string htmlconcated = sb.ToString();
+            while(!htmlconcated.Contains("/module/"))
+            {
+                temp1 = htmlconcated;
+                temp1 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
 
-                temp1 = htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>"));
+
+
                 temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
                 temp1 = temp1.Substring(temp1.IndexOf("</a>"));
-                appIDNamesUnFormatted.Add(temp1);
-
-                
             }
-            
-
 
 
 
