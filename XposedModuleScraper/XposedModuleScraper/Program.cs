@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Net;
+using System.Diagnostics;
+using System.Threading;
 
 namespace XposedModuleScraper
 {
@@ -26,40 +28,22 @@ namespace XposedModuleScraper
             string astr1 = astr.Remove(astr.IndexOf(" mod"));
             string astr2 = astr1.Trim();
             int modules = Convert.ToInt32(astr2);
-
-
+            
             #endregion
             string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
 
+            int pageDeterminer = (modules / 10) + 1;
 
 
-
-#if DEBUG
-            System.Console.WriteLine(FirstPageSource);
-            Console.WriteLine("\n\n\n\n\n" + modules);
-            Console.ReadLine();
-#endif
-        }
-        public static string GetHTMLSource(string Url)
-        {
-            string htmlCode;
-            WebRequest req = HttpWebRequest.Create(Url);
-            req.Method = "GET";
-
-            using (StreamReader reader = new StreamReader(req.GetResponse().GetResponseStream()))
+            string[] pagesHTMLsource = new string[pageDeterminer];
+            for(int i = 1; i <= 10; i++)
             {
-                htmlCode = reader.ReadToEnd();
+                pagesHTMLsource[i] = new System.Net.WebClient().DownloadString(UrlTemplate + i);
             }
-            return htmlCode;
-        }
-        public static string[] GetSequentialHTMLPages(string Url, int pagesLimit)
-        {
-            string[] htmlPages = new string[pagesLimit];
-            for(int i=1; i<pagesLimit; i++)
-            {
 
-            }
-            return htmlPages;
+
+
         }
+        
     }
 }
