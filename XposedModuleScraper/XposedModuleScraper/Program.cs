@@ -29,53 +29,70 @@ namespace XposedModuleScraper
             public int moduleNumber;
             public string uid;
             public string title;
+            public string moduleUrl;
             public string apkUrl;
             public string description;
             public int bytes;
-
-            public ModuleDetails()
-            {
-
-            }
-            public ModuleDetails(string apkUrl, string description)
-            {
-                this.apkUrl = apkUrl;
-                this.description = description;
-            }
+            public bool HaveApk;
         };
 
 
         #endregion
 
         #region Methods
-        static ModuleDetails GetModuleDetails(string moduleUrl)
+        static ModuleDetails GetModuleDetails(ModuleDetails moduleDetails)
         {
-            ModuleDetails moduleDetails = new ModuleDetails();
-            string html = webClient.DownloadString(moduleUrl);
-            string modulebytestemp;
-            moduleDetails.apkUrl = html.Substring(html.IndexOf("<span class=\"file\"><a href=\"") + "<span class=\"file\"><a href=\"".Length);
-            moduleDetails.apkUrl = moduleDetails.apkUrl.Remove(moduleDetails.apkUrl.IndexOf("\" type=\"application/octet-stream; length"));
-            modulebytestemp = html.Substring(html.IndexOf("\" type=\"application/octet-stream; length=") + "\" type=\"application/octet-stream; length=".Length);
-            moduleDetails.bytes = Convert.ToInt32(modulebytestemp.Remove(modulebytestemp.IndexOf("\">")));
-            return moduleDetails;
+            string html = webClient.DownloadString("http://repo.xposed.info/module/" + moduleDetails.moduleUrl);
+            if(html.Contains("External"))
+            {
+                Console.WriteLine("cannot Download " + moduleDetails.moduleUrl);
+               
+                ModuleDetails moduleDe = new ModuleDetails();
+                moduleDe.title = "rgvergv";
+                moduleDe.apkUrl = "rgverv eve";
+                return moduleDe;
+            }
+            else
+            {
+                string modulebytestemp;
+                moduleDetails.apkUrl = html.Substring(html.IndexOf("<span class=\"file\"><a href=\"") + "<span class=\"file\"><a href=\"".Length);
+                moduleDetails.apkUrl = moduleDetails.apkUrl.Remove(moduleDetails.apkUrl.IndexOf("\" type=\"application/octet-stream; length"));
+                modulebytestemp = html.Substring(html.IndexOf("\" type=\"application/octet-stream; length=") + "\" type=\"application/octet-stream; length=".Length);
+                moduleDetails.bytes = Convert.ToInt32(modulebytestemp.Remove(modulebytestemp.IndexOf("\">")));
+                Console.WriteLine(moduleDetails.apkUrl);
+                html = " ";
+                return moduleDetails;
+            }
+
         }
 
-        static void DisplayModuleDetails(List<ModuleDetails> modulesDetails)
+        static void DisplayModuleDetails()
         {
-            for(int i = 0; i < 10; i++)
+            for(int i = 0; i < allModules.Count ; i++)
             {
-
                 Console.WriteLine("\n");
-                Console.WriteLine(modulesDetails.ElementAt(i).apkUrl);
-                Console.WriteLine(modulesDetails.ElementAt(i).bytes);
+                Console.WriteLine(allModules.ElementAt(i).moduleUrl);
+                Console.WriteLine(allModules.ElementAt(i).apkUrl);
+                Console.WriteLine(allModules.ElementAt(i).bytes);
                 Console.WriteLine("\n");
             }
         }
-        static List<ModuleDetails> GetModuleDetailsFromListingPage(string listingPageUrl)
+        static void LogApkUrls()
         {
-            List<ModuleDetails> modulesDetails = new List<ModuleDetails>();
+            StringBuilder sb = new StringBuilder();
+            for(int i = 0; i < allModules.Count; i++)
+            {
+                sb.AppendLine(allModules.ElementAt(i).apkUrl);
+            }
+            string sbb = sb.ToString();
+            //File.AppendAllText("C:\\Scraped\\uri.txt", sb.ToString());
+           // File.AppendAllText("C:\\Scraped\\a.txt", sbb);
+        }
+
+        static void GetModuleDetailsFromListingPage(string listingPageUrl)
+        {
             string html = webClient.DownloadString(listingPageUrl);
-            html.Replace("/module/de.robv.android.xposed.installer", " ");
+            html.Replace("module/de.robv.android.xposed.installer", " ");
             string temp1 = " ", temp2= " ";
             temp1 = html;
             while ((temp1.Contains("<a href=\"/module/")))
@@ -83,9 +100,18 @@ namespace XposedModuleScraper
                 temp2 = temp1.Substring(temp1.IndexOf("<a href=\"/module/") + 17);
                 temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
                 temp2 = temp2.Remove(temp2.IndexOf("</a>"));
-                allModules.Add(new ModuleDetails(temp2.Substring(temp2.IndexOf(">") + 1), temp2.Remove(temp2.IndexOf("\""))));
+                string moduleUrl = temp2.Remove(temp2.IndexOf("\""));
+                if(moduleUrl != "de.robv.android.xposed.installer")
+                {
+                    ModuleDetails moduleDetails = new ModuleDetails();
+                    moduleDetails.moduleUrl = moduleUrl;
+                    moduleDetails.title = temp2.Substring(temp2.IndexOf(">") + 1);
+                    allModules.Add(GetModuleDetails(moduleDetails));
+                    //File.AppendAllText("C:\\scc\\txt.txt", moduleUrl);
+                }
             }
-            return modulesDetails;
+            Console.WriteLine("Number of Download Links fetched: " + allModules.Count);
+
         }
         static void SetDetails()
         {
@@ -109,14 +135,11 @@ namespace XposedModuleScraper
             #region initialSetup
             SetDetails();
 
+
 #if DEBUG
 
             Console.WriteLine("DEBUG Session");
-
-            allModules.AddRange(GetModuleDetailsFromListingPage(UrlTemplate + 0));
-            DisplayModuleDetails(allModules);
-
-            Console.ReadLine();
+            
 
 #endif
 
@@ -125,9 +148,15 @@ namespace XposedModuleScraper
             //          
             for (int i = 0; i < listingPages;i++)
             {
-                allModules.AddRange(GetModuleDetailsFromListingPage(UrlTemplate + i));
+                GetModuleDetailsFromListingPage(UrlTemplate + i);
+                
+                Thread.Sleep(1000);
             }
             #endregion
+
+#if DEBUG
+            
+#endif
 
 
         }
