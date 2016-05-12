@@ -32,6 +32,16 @@ namespace XposedModuleScraper
             public string apkUrl;
             public string description;
             public int bytes;
+
+            public ModuleDetails()
+            {
+
+            }
+            public ModuleDetails(string apkUrl, string description)
+            {
+                this.apkUrl = apkUrl;
+                this.description = description;
+            }
         };
 
 
@@ -50,20 +60,42 @@ namespace XposedModuleScraper
             return moduleDetails;
         }
 
+        static void DisplayModuleDetails(List<ModuleDetails> modulesDetails)
+        {
+            for(int i = 0; i < 10; i++)
+            {
+
+                Console.WriteLine("\n");
+                Console.WriteLine(modulesDetails.ElementAt(i).apkUrl);
+                Console.WriteLine(modulesDetails.ElementAt(i).bytes);
+                Console.WriteLine("\n");
+            }
+        }
         static List<ModuleDetails> GetModuleDetailsFromListingPage(string listingPageUrl)
         {
             List<ModuleDetails> modulesDetails = new List<ModuleDetails>();
             string html = webClient.DownloadString(listingPageUrl);
             html.Replace("/module/de.robv.android.xposed.installer", " ");
-
-
-
+            string temp1 = " ", temp2= " ";
+            temp1 = html;
+            while ((temp1.Contains("<a href=\"/module/")))
+            {
+                temp2 = temp1.Substring(temp1.IndexOf("<a href=\"/module/") + 17);
+                temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
+                temp2 = temp2.Remove(temp2.IndexOf("</a>"));
+                allModules.Add(new ModuleDetails(temp2.Substring(temp2.IndexOf(">") + 1), temp2.Remove(temp2.IndexOf("\""))));
+            }
             return modulesDetails;
         }
         static void SetDetails()
         {
             string FirstPageSource = webClient.DownloadString(UrlTemplate + 0);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
+#if DEBUG 
+            Console.WriteLine("Please enter number of modules to be downloaded.");
+            modules = Convert.ToInt32(Console.ReadLine());
+#endif
+
             if ((modules % 10) == 0)
                 listingPages = modules / 10;
             else
@@ -74,14 +106,18 @@ namespace XposedModuleScraper
         #endregion
         static void Main(string[] args)
         {
-
             #region initialSetup
             SetDetails();
 
 #if DEBUG
 
+            Console.WriteLine("DEBUG Session");
+
+            allModules.AddRange(GetModuleDetailsFromListingPage(UrlTemplate + 0));
+            DisplayModuleDetails(allModules);
+
             Console.ReadLine();
-            modules = 115;
+
 #endif
 
             // retrieve all pages each of which displays 10 modules including the last page which can display 1,2,or even 10 modules
@@ -92,20 +128,9 @@ namespace XposedModuleScraper
                 allModules.AddRange(GetModuleDetailsFromListingPage(UrlTemplate + i));
             }
             #endregion
-            
-//            while((temp1.Contains(@"<a href=""/module/")))
-//            {
-//                i++;
-//                temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/") + 17);
-//                temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
-//                temp2 = temp2.Remove(temp2.IndexOf("</a>"));
-//                temp3 = temp2.Substring(temp2.IndexOf(">") + 1);
-//                temp4 = temp2.Remove(temp2.IndexOf("\""));
-//                appIdNames.Add(temp4, temp3);
-//            }
-            
 
-    }
-        
+
+        }
+
     }
 }
