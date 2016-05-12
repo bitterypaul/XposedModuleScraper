@@ -7,7 +7,6 @@ using System.IO;
 using System.Net;
 using System.Diagnostics;
 using System.Threading;
-using System.Net;
 
 namespace XposedModuleScraper
 {
@@ -22,12 +21,13 @@ namespace XposedModuleScraper
             string temp1, temp2;                            //temporary strings to perform string operations.
             string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
             //List<string>
-            List<string> htmlPages = new List<string>();    // one for pages which list 10 modules per page.
-            List<string> htmlCombined = new List<string>();
-
             StringBuilder sb = new StringBuilder();
-            List<string> appIDNamesUnFormatted = new List<string>();   // one for 
+            List<string> apphtml = new List<string>();   // one for 
             Dictionary<string, string> appIdNames = new Dictionary<string, string>();
+            Dictionary<string, string> appIdhtml = new Dictionary<string, string>();
+            //structs
+
+
             //integers
             int pages;                                      //number of pages.
             int modules;                                    //number of modules.
@@ -38,11 +38,11 @@ namespace XposedModuleScraper
             #endregion
             #region Get First Page Source determine number of modules and pages
             FirstPageSource = webClient.DownloadString(UrlTemplate + 0);
-            htmlPages.Add(FirstPageSource);
+            sb.Append(FirstPageSource);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
 #if DEBUG
             Console.WriteLine(modules);
-            modules = 25;
+            modules = 115;
 #endif
 
             if ((modules % 10) == 0)
@@ -55,37 +55,80 @@ namespace XposedModuleScraper
             //i < pages is used because the first page is already downloaded and the total number of pages to be fetched is one less than total number of pages
             for (i=1; i < pages;i++)
             {
-                htmlPages.Add(webClient.DownloadString(UrlTemplate + i));
+                sb.Append(webClient.DownloadString(UrlTemplate + i));
                 Thread.Sleep(delayBetweenRequests);
             }
             #endregion
+            sb.Replace(@"<a href=""/module/de.robv.android.xposed.installer", " ");
+            string sss = sb.ToString();
 
+#if DEBUG 
 
-            for(i=0; i < pages; i++)
+            File.AppendAllText("htmlt.txt", sss);
+            Console.ReadLine();
+
+#endif
+            string temp3 = " ", temp4= " ";
+            temp1 = sss;
+
+            i = 0;
+            while((temp1.Contains(@"<a href=""/module/")))
             {
-                //htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>"));
-                string sss = htmlPages.ElementAt(i);
-
-                Console.WriteLine(sss.IndexOf(@"<tbody>") + 7);
-                Console.WriteLine(sss.IndexOf("</tbody>"));
-                string ert = sss.Substring(sss.IndexOf(@"<tbody>"), sss.IndexOf("</tbody>"));
-                Console.WriteLine(ert);
-
-
-                //sb.Append(htmlPages.ElementAt(i).Substring(htmlPages.ElementAt(i).IndexOf(@"<tbody>") + 7, htmlPages.ElementAt(i).IndexOf("</tbody>")));
-
-            }
-            List<string> links = new List<string>();
-            string htmlconcated = sb.ToString();
-            while(!htmlconcated.Contains("/module/"))
-            {
-                temp1 = htmlconcated;
-                temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""), temp1.IndexOf("</a>"));
-                temp1 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/"""));
-                htmlconcated = temp1;
+                i++;
+                temp2 = temp1.Substring(temp1.IndexOf(@"<a href=""/module/") + 17);
+                temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
+                temp2 = temp2.Remove(temp2.IndexOf("</a>"));
+                temp3 = temp2.Substring(temp2.IndexOf(">") + 1);
+                temp4 = temp2.Remove(temp2.IndexOf("\""));
+                appIdNames.Add(temp4, temp3);
             }
 
+#if DEBUG 
+            foreach(KeyValuePair<string,string> appidname in appIdNames)
+            {
+                Console.WriteLine(appidname.Key);
 
+                Console.WriteLine(appidname.Value);
+            }
+            
+            Console.ReadLine();
+
+#endif
+            for (i = 0; i < appIdNames.Count; i++)
+            {
+                KeyValuePair<string, string> appidname = appIdNames.ElementAt(i);
+                appIdhtml.Add(appidname.Value,webClient.DownloadString("http://repo.xposed.info/module/" + appidname.Key));
+                //Thread.Sleep(delayBetweenRequests);
+            }
+            i = 0;
+            int lengthk = 0;
+            string leen = " ", urll =  " ";
+            foreach(KeyValuePair<string,string> appidhtml in appIdhtml)
+            {
+                temp1 = appidhtml.Value;
+                temp1 = temp1.Substring(temp1.IndexOf(@"<span class=""file""><a href=""") + 28);
+                temp2 = temp1.Remove(temp1.IndexOf("</a>"));
+                leen = temp2.Substring(temp2.IndexOf("length=") +7 );
+                leen = leen.Remove(leen.IndexOf("\">"));
+                urll = temp2.Remove(temp2.IndexOf(@""" type=""application/octet-stream; length="));
+                Console.WriteLine(leen);
+                Console.WriteLine(urll);
+                Console.ReadLine();
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+            Console.ReadLine();
 
 
         }
