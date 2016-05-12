@@ -16,17 +16,14 @@ namespace XposedModuleScraper
     {
 
         #region Declarations
+
         static int modules;
         static int listingPages;
         static int delayBetweenRequests = 1; //Time delay between successive requests to prevent being locked out from the system
         static int iterationVariable = 0;
         static WebClient webClient = new WebClient();
         static string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
-
-
-        //temporary variables
-        string ahtml = " ";
-
+        static List<ModuleDetails> allModules = new List<ModuleDetails>();
         class ModuleDetails
         {
             public int moduleNumber;
@@ -37,6 +34,7 @@ namespace XposedModuleScraper
             public int bytes;
         };
 
+
         #endregion
 
         #region Methods
@@ -45,18 +43,19 @@ namespace XposedModuleScraper
             ModuleDetails moduleDetails = new ModuleDetails();
             string html = webClient.DownloadString(moduleUrl);
             string modulebytestemp;
-            //Console.WriteLine();
             moduleDetails.apkUrl = html.Substring(html.IndexOf("<span class=\"file\"><a href=\"") + "<span class=\"file\"><a href=\"".Length);
             moduleDetails.apkUrl = moduleDetails.apkUrl.Remove(moduleDetails.apkUrl.IndexOf("\" type=\"application/octet-stream; length"));
             modulebytestemp = html.Substring(html.IndexOf("\" type=\"application/octet-stream; length=") + "\" type=\"application/octet-stream; length=".Length);
             moduleDetails.bytes = Convert.ToInt32(modulebytestemp.Remove(modulebytestemp.IndexOf("\">")));
-            
             return moduleDetails;
         }
 
-        static List<ModuleDetails> GetModuleDetailsFromListingPage(string listingPage)
+        static List<ModuleDetails> GetModuleDetailsFromListingPage(string listingPageUrl)
         {
             List<ModuleDetails> modulesDetails = new List<ModuleDetails>();
+            string html = webClient.DownloadString(listingPageUrl);
+            html.Replace("/module/de.robv.android.xposed.installer", " ");
+
 
 
             return modulesDetails;
@@ -80,41 +79,20 @@ namespace XposedModuleScraper
             SetDetails();
 
 #if DEBUG
-            ModuleDetails mm = GetModuleDetails("http://repo.xposed.info/module/xyz.paphonb.cmvisualizer");
-            Console.WriteLine(mm.apkUrl);
-            Console.WriteLine(mm.bytes);
+
             Console.ReadLine();
-
-
-
-
-            Console.WriteLine(modules);
             modules = 115;
 #endif
-            #endregion
 
-            //#region retrieve all pages
             // retrieve all pages each of which displays 10 modules including the last page which can display 1,2,or even 10 modules
-            //i < pages is used because the first page is already downloaded and the total number of pages to be fetched is one less than total number of pages
-//            for (i=1; i < pages;i++)
-//            {
-//                sb.Append(webClient.DownloadString(UrlTemplate + i));
-//                Thread.Sleep(delayBetweenRequests);
-//            }
-//            #endregion
-//            sb.Replace(@"<a href=""/module/de.robv.android.xposed.installer", " ");
-//            string sss = sb.ToString();
-
-//#if DEBUG 
-
-//            File.AppendAllText("htmlt.txt", sss);
-//            Console.ReadLine();
-
-//#endif
-//            string temp3 = " ", temp4= " ";
-//            temp1 = sss;
-
-//            i = 0;
+            //i < listingpages is used because the first page is is 0 total number of pages to be fetched is one less than total number of pages
+            //          
+            for (int i = 0; i < listingPages;i++)
+            {
+                allModules.AddRange(GetModuleDetailsFromListingPage(UrlTemplate + i));
+            }
+            #endregion
+            
 //            while((temp1.Contains(@"<a href=""/module/")))
 //            {
 //                i++;
@@ -126,33 +104,6 @@ namespace XposedModuleScraper
 //                appIdNames.Add(temp4, temp3);
 //            }
             
-//            foreach(KeyValuePair<string,string> appidname in appIdNames)
-//            {
-//                Console.WriteLine(appidname.Key);
-
-//                Console.WriteLine(appidname.Value);
-//            }
-         
-//            for (i = 0; i < appIdNames.Count; i++)
-//            {
-//                KeyValuePair<string, string> appidname = appIdNames.ElementAt(i);
-//                appIdhtml.Add(appidname.Value,webClient.DownloadString("http://repo.xposed.info/module/" + appidname.Key));
-//                //Thread.Sleep(delayBetweenRequests);
-//            }
-//            i = 0;
-//            int lengthk = 0;
-//            string leen = " ", urll =  " ";
-//            foreach(KeyValuePair<string,string> appidhtml in appIdhtml)
-//            {
-//                temp1 = appidhtml.Value;
-//                temp1 = temp1.Substring(temp1.IndexOf(@"<span class=""file""><a href=""") + 28);
-//                temp2 = temp1.Remove(temp1.IndexOf("</a>"));
-//                leen = temp2.Substring(temp2.IndexOf("length=") +7 );
-//                leen = leen.Remove(leen.IndexOf("\">"));
-//                urll = temp2.Remove(temp2.IndexOf(@""" type=""application/octet-stream; length="));
-//            }
-//            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-
 
     }
         
