@@ -8,7 +8,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Threading;
 using System.Runtime.CompilerServices;
-
+using System.ComponentModel;
 
 namespace XposedModuleScraper
 {
@@ -20,7 +20,6 @@ namespace XposedModuleScraper
         static int modules;
         static int listingPages;
         static int delayBetweenRequests = 1; //Time delay between successive requests to prevent being locked out from the system
-        static int iterationVariable = 0;
         static WebClient webClient = new WebClient();
         static string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
         static List<ModuleDetails> allModules = new List<ModuleDetails>();
@@ -31,6 +30,7 @@ namespace XposedModuleScraper
             public string title;
             public string moduleUrl;
             public string apkUrl;
+            public string fileName;
             public string description;
             public int bytes;
             public bool HaveApk;
@@ -46,7 +46,6 @@ namespace XposedModuleScraper
             if(html.Contains("External"))
             {
                 Console.WriteLine("cannot Download " + moduleDetails.moduleUrl);
-               
                 ModuleDetails moduleDe = new ModuleDetails();
                 moduleDe.title = "rgvergv";
                 moduleDe.apkUrl = "rgverv eve";
@@ -59,40 +58,20 @@ namespace XposedModuleScraper
                 moduleDetails.apkUrl = moduleDetails.apkUrl.Remove(moduleDetails.apkUrl.IndexOf("\" type=\"application/octet-stream; length"));
                 modulebytestemp = html.Substring(html.IndexOf("\" type=\"application/octet-stream; length=") + "\" type=\"application/octet-stream; length=".Length);
                 moduleDetails.bytes = Convert.ToInt32(modulebytestemp.Remove(modulebytestemp.IndexOf("\">")));
+                Console.WriteLine("Downloading file " + allModules.Count + " of " + modules);
                 Console.WriteLine(moduleDetails.apkUrl);
+                moduleDetails.fileName = MakeValidFileName(moduleDetails.title);
+
                 html = " ";
                 return moduleDetails;
             }
 
         }
 
-        static void DisplayModuleDetails()
-        {
-            for(int i = 0; i < allModules.Count ; i++)
-            {
-                Console.WriteLine("\n");
-                Console.WriteLine(allModules.ElementAt(i).moduleUrl);
-                Console.WriteLine(allModules.ElementAt(i).apkUrl);
-                Console.WriteLine(allModules.ElementAt(i).bytes);
-                Console.WriteLine("\n");
-            }
-        }
-        static void LogApkUrls()
-        {
-            StringBuilder sb = new StringBuilder();
-            for(int i = 0; i < allModules.Count; i++)
-            {
-                sb.AppendLine(allModules.ElementAt(i).apkUrl);
-            }
-            string sbb = sb.ToString();
-            //File.AppendAllText("C:\\Scraped\\uri.txt", sb.ToString());
-           // File.AppendAllText("C:\\Scraped\\a.txt", sbb);
-        }
-
         static void GetModuleDetailsFromListingPage(string listingPageUrl)
         {
+            
             string html = webClient.DownloadString(listingPageUrl);
-            html.Replace("module/de.robv.android.xposed.installer", " ");
             string temp1 = " ", temp2= " ";
             temp1 = html;
             while ((temp1.Contains("<a href=\"/module/")))
@@ -107,7 +86,6 @@ namespace XposedModuleScraper
                     moduleDetails.moduleUrl = moduleUrl;
                     moduleDetails.title = temp2.Substring(temp2.IndexOf(">") + 1);
                     allModules.Add(GetModuleDetails(moduleDetails));
-                    //File.AppendAllText("C:\\scc\\txt.txt", moduleUrl);
                 }
             }
             Console.WriteLine("Number of Download Links fetched: " + allModules.Count);
@@ -128,6 +106,36 @@ namespace XposedModuleScraper
                 listingPages = ((modules - (modules % 10)) / 10) + 1;
 
         }
+        
+        static char[] _invalids;
+        public static string MakeValidFileName(string text, char? replacement = '_', bool fancy = true)
+        {
+            StringBuilder sb = new StringBuilder(text.Length);
+            var invalids = _invalids ?? (_invalids = Path.GetInvalidFileNameChars());
+            bool changed = false;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (invalids.Contains(c))
+                {
+                    changed = true;
+                    var repl = replacement ?? '\0';
+                    if (fancy)
+                    {
+                        if (c == '"') repl = '”'; // U+201D right double quotation mark
+                        else if (c == '\'') repl = '’'; // U+2019 right single quotation mark
+                        else if (c == '/') repl = '⁄'; // U+2044 fraction slash
+                    }
+                    if (repl != '\0')
+                        sb.Append(repl);
+                }
+                else
+                    sb.Append(c);
+            }
+            if (sb.Length == 0)
+                return "_";
+            return changed ? sb.ToString() : text;
+        }
 
         #endregion
         static void Main(string[] args)
@@ -139,7 +147,6 @@ namespace XposedModuleScraper
 #if DEBUG
 
             Console.WriteLine("DEBUG Session");
-            
 
 #endif
 
@@ -154,8 +161,24 @@ namespace XposedModuleScraper
             }
             #endregion
 
+
+            int allModulesCount = allModules.Count;
+            int bytes = 0;
+            Console.WriteLine("All details fetched.\n Starting download\n");
+            for ( int i = 0; i < allModulesCount; i++)
+            {
+                Console.WriteLine("Downloading File " + i + " of " + allModulesCount);
+                webClient.DownloadFile(new Uri(allModules.ElementAt(i).apkUrl, UriKind.Absolute), allModules.ElementAt(i).fileName);
+                Console.WriteLine("File " + allModules.ElementAt(i).fileName + " downloaded");
+                bytes += allModules.ElementAt(i).bytes;
+                Console.WriteLine("Size: " + (bytes / 1024));
+
+            }
+            Console.WriteLine((bytes / 1024 / 1024) + " MB");
+
 #if DEBUG
-            
+
+            Console.ReadLine();
 #endif
 
 
