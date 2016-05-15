@@ -44,7 +44,7 @@ namespace XposedModuleScraper
         #region Methods
         static void SetModuleDetails()
         {
-            for(int i = 0; i < allModules.Count; i++)
+            for (int i = 0; i < allModules.Count; i++)
             {
                 if (allModules[i].html.Contains("External") || allModules[i].html == null)
                 {
@@ -61,21 +61,21 @@ namespace XposedModuleScraper
             }
 
         }
-        
+
         static void SetDetails()
         {
 
             ServicePointManager.DefaultConnectionLimit = 1000;
             string FirstPageSource = webClient.DownloadString(UrlTemplate + 0);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
-            
+
             if ((modules % 10) == 0)
                 listingPages = modules / 10;
             else
                 listingPages = ((modules - (modules % 10)) / 10) + 1;
 
         }
-        
+
         static char[] _invalids;
         public static string MakeValidFileName(string text, char? replacement = '_', bool fancy = true)
         {
@@ -110,15 +110,15 @@ namespace XposedModuleScraper
         public static void DownloadUrlsInParallel1(int it)
         {
             List<string> html = new List<string>();
-            if(it == 0)
+            if (it == 0)
             {
                 List<Uri> urls = new List<Uri>();
-                for(int i = 0; i < allModules.Count; i++)
+                for (int i = 0; i < allModules.Count; i++)
                 {
                     urls.Add(new Uri("http://repo.xposed.info/module/" + allModules[i].moduleUrl));
                 }
                 List<string> htmlListingPages = DownloadUrlsInParallel(urls.ToArray());
-                for(int i = 0; i < allModules.Count; i++)
+                for (int i = 0; i < allModules.Count; i++)
                 {
                     allModules[i].html = htmlListingPages[i];
                 }
@@ -155,9 +155,9 @@ namespace XposedModuleScraper
         public static void DownloadFilesInParallel()
         {
             List<int> apknumber = new List<int>();
-            for(int i = 0; i < allModules.Count; i++)
+            for (int i = 0; i < allModules.Count; i++)
             {
-                if(allModules[i].apkUrl != null)
+                if (allModules[i].apkUrl != null)
                 {
                     apknumber[i] = i;
                 }
@@ -169,7 +169,7 @@ namespace XposedModuleScraper
                         using (var client = new System.Net.WebClient())
                         {
                             var u = (int)state;
-                            if(allModules[u].apkUrl != null)
+                            if (allModules[u].apkUrl != null)
                             {
                                 client.DownloadFile(allModules[u].apkUrl, MakeValidFileName(allModules[u].fileName));
                             }
@@ -181,7 +181,7 @@ namespace XposedModuleScraper
             Task.WaitAll(tasks);
             foreach (var t in tasks)
             {
-                Console.WriteLine(t.IsCompleted? "y" : "n");
+                Console.WriteLine(t.IsCompleted ? "y" : "n");
             }
         }
         #endregion
@@ -189,12 +189,12 @@ namespace XposedModuleScraper
         {
             SetDetails();
             Uri[] uri = new Uri[listingPages];
-            for(int i = 0; i <listingPages;i++)
+            for (int i = 0; i < listingPages; i++)
             {
                 uri[i] = new Uri(UrlTemplate + i);
             }
             List<string> htmlListingPages = DownloadUrlsInParallel(uri);
-            for(int i = 0;i < htmlListingPages.Count; i++)
+            for (int i = 0; i < htmlListingPages.Count; i++)
             {
                 string html = htmlListingPages[i];
                 string temp1 = " ", temp2 = " ";
@@ -218,7 +218,7 @@ namespace XposedModuleScraper
             }
 
             DownloadUrlsInParallel1(0);
-            for(int i = 0; i < allModules.Count; i++)
+            for (int i = 0; i < allModules.Count; i++)
             {
                 SetModuleDetails();
             }
