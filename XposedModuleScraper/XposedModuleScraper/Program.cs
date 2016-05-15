@@ -20,9 +20,13 @@ namespace XposedModuleScraper
         static int modules;
         static int listingPages;
         static int delayBetweenRequests = 1; //Time delay between successive requests to prevent being locked out from the system
+        static List<string> htmlListingPages = new List<string>();
+        static int threads = 10;
         static WebClient webClient = new WebClient();
         static string UrlTemplate = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
         static List<ModuleDetails> allModules = new List<ModuleDetails>();
+        static List<WebClient> webclientThreads = new List<WebClient>();
+
         class ModuleDetails
         {
             public int moduleNumber;
@@ -71,28 +75,12 @@ namespace XposedModuleScraper
         static void GetModuleDetailsFromListingPage(string listingPageUrl)
         {
             
-            string html = webClient.DownloadString(listingPageUrl);
-            string temp1 = " ", temp2= " ";
-            temp1 = html;
-            while ((temp1.Contains("<a href=\"/module/")))
-            {
-                temp2 = temp1.Substring(temp1.IndexOf("<a href=\"/module/") + 17);
-                temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
-                temp2 = temp2.Remove(temp2.IndexOf("</a>"));
-                string moduleUrl = temp2.Remove(temp2.IndexOf("\""));
-                if(moduleUrl != "de.robv.android.xposed.installer")
-                {
-                    ModuleDetails moduleDetails = new ModuleDetails();
-                    moduleDetails.moduleUrl = moduleUrl;
-                    moduleDetails.title = temp2.Substring(temp2.IndexOf(">") + 1);
-                    allModules.Add(GetModuleDetails(moduleDetails));
-                }
-            }
-            Console.WriteLine("Number of Download Links fetched: " + allModules.Count);
 
         }
         static void SetDetails()
         {
+
+            ServicePointManager.DefaultConnectionLimit = 1000;
             string FirstPageSource = webClient.DownloadString(UrlTemplate + 0);
             modules = Convert.ToInt32(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).Remove(FirstPageSource.Substring(FirstPageSource.IndexOf("Displaying 1 - 10 of") + 20, 18).IndexOf(" mod")).Trim());
 #if DEBUG 
@@ -137,9 +125,178 @@ namespace XposedModuleScraper
             return changed ? sb.ToString() : text;
         }
 
+        public static List<string> DownloadUrlsInParallel(Uri[] urls)
+        {
+            var tasks = urls
+                .Select(url => Task.Factory.StartNew(
+                    state =>
+                    {
+                        using (var client = new System.Net.WebClient())
+                        {
+                            var u = (Uri)state;
+                            Console.WriteLine("starting to download {0}", u);
+                            string result = client.DownloadString(u);
+                            Console.WriteLine("finished downloading {0}", u);
+                            return result;
+                        }
+                    }, url)
+                )
+                .ToArray();
+
+            Task.WaitAll(tasks);
+            List<string> ret = new List<string>();
+            foreach (var t in tasks)
+            {
+                ret.Add(t.Result);
+                
+                string temp1 = " ", temp2 = " ";
+                temp1 = t.Result;
+                while ((temp1.Contains("<a href=\"/module/")))
+                {
+                    temp2 = temp1.Substring(temp1.IndexOf("<a href=\"/module/") + 17);
+                    temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
+                    temp2 = temp2.Remove(temp2.IndexOf("</a>"));
+                    string moduleUrl = temp2.Remove(temp2.IndexOf("\""));
+                    if (moduleUrl != "de.robv.android.xposed.installer")
+                    {
+                        ModuleDetails moduleDetails = new ModuleDetails();
+                        moduleDetails.moduleUrl = moduleUrl;
+                        moduleDetails.title = temp2.Substring(temp2.IndexOf(">") + 1);
+                        allModules.Add(GetModuleDetails(moduleDetails));
+                    }
+                }
+
+
+
+
+
+
+            }
+            return ret;
+        }
         #endregion
         static void Main(string[] args)
         {
+            ServicePointManager.DefaultConnectionLimit = 1000;
+
+            var watch = Stopwatch.StartNew();
+
+            Uri[] uri = new Uri[87];
+
+            for(int i = 0; i <87;i++)
+            {
+                uri[i] = new Uri(UrlTemplate + i);
+
+            }
+
+            DownloadUrlsInParallel(uri);
+
+            Console.WriteLine("async: " + watch.Elapsed);
+
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    webclientThreads.Add(new WebClient());
+            //    webclientThreads[i].DownloadStringCompleted += (sender, e) =>
+            //    {
+            //        string pageSourceCode = e.Result;
+            //        htmlListingPages.Add(pageSourceCode);
+
+            //    };
+
+            //}
+            //for (int i = 0; i < 80; i++)
+            //{
+            //    if (i > 10)
+            //    {
+            //        for(;;)
+            //        {
+            //            if (!(webclientThreads[i %10].IsBusy))
+            //            {
+            //                webclientThreads[i %10].DownloadStringAsync(new Uri(UrlTemplate + i));
+            //                break;
+            //            }
+            //            else
+            //                Thread.Sleep(300);
+            //        }
+            //    }
+
+
+            //}
+
+            Console.ReadLine();
+            //for (int i = 0; i < threads; i++)
+            //{
+            //    webclientThreads.Add(new WebClient());
+            //    webclientThreads[i].DownloadStringCompleted += (sender, e) =>
+            //    {
+            //        string pageSourceCode = e.Result;
+            //        string temp1 = " ", temp2 = " ";
+            //        temp1 = pageSourceCode;
+            //        while ((temp1.Contains("<a href=\"/module/")))
+            //        {
+            //            temp2 = temp1.Substring(temp1.IndexOf("<a href=\"/module/") + 17);
+            //            temp1 = temp2.Substring(temp2.IndexOf("</a>") + 4);
+            //            temp2 = temp2.Remove(temp2.IndexOf("</a>"));
+            //            string moduleUrl = temp2.Remove(temp2.IndexOf("\""));
+            //            if (moduleUrl != "de.robv.android.xposed.installer")
+            //            {
+            //                ModuleDetails moduleDetails = new ModuleDetails();
+            //                moduleDetails.moduleUrl = moduleUrl;
+            //                moduleDetails.title = temp2.Substring(temp2.IndexOf(">") + 1);
+            //                allModules.Add(GetModuleDetails(moduleDetails));
+            //            }
+            //        }
+
+            //    };
+
+            //}
+
+
+            //webclientThreads[i].DownloadStringAsync(new Uri(UrlTemplate + i));
+
+
+
+            //var count = 100;
+            //var root = "http://repo.xposed.info/module-overview?combine=&status=All&field_restrict_edits_value=All&sort_by=field_last_update_value&page=";
+
+            //ServicePointManager.DefaultConnectionLimit = 1000;
+            //DateTime tt = DateTime.Now;
+            //DateTime aa = DateTime.Now;
+            //var watch = Stopwatch.StartNew();
+            //var completed = new CountdownEvent(count);
+
+            //TimeSpan ee = tt - aa;
+            //List<WebClient> webclientThreads = new List<WebClient>();
+
+            //for (int i = 0; i < count; i++)
+            //{
+            //    webclientThreads.Add(new WebClient());
+            //}
+            //for (int i = 0; i < count; i++)
+            //{
+
+            //    webclientThreads[i].DownloadStringCompleted += (sender, e) =>
+            //    {
+            //        string pageSourceCode = e.Result;
+            //        //aa = DateTime.Now;
+            //        //ee = tt - aa;
+
+            //        Console.WriteLine("async: " + i);
+            //    };
+
+            //}
+
+            //for (int i = 0; i < count; i++)
+            //{
+            //    webclientThreads[i].DownloadStringAsync(new Uri(UrlTemplate + i));
+            //}
+
+            //ee = tt - aa;
+            //Console.WriteLine("async: " + ee.ToString());
+
+
+            #region all
+            Console.ReadLine();
             #region initialSetup
             SetDetails();
 
@@ -181,8 +338,7 @@ namespace XposedModuleScraper
             Console.ReadLine();
 #endif
 
-
+            #endregion
         }
-
     }
 }
